@@ -1,0 +1,16 @@
+{
+  "name": "Go firestore publisher",
+  "build": {
+    "dockerfile": "../docker/Dockerfile",
+    "context": ".."
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": ["golang.go"],
+      "settings": {
+        "terminal.integrated.shell.linux": "/bin/bash"
+      }
+    },
+    "extensions": ["golang.go"]
+  }
+}
