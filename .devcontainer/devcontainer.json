@@ -1,5 +1,5 @@
 {
-  "name": "Go firestore publisher",
+  "name": "Bank Statement reader ",
   "build": {
     "dockerfile": "../docker/Dockerfile",
     "context": ".."
