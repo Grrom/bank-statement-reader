@@ -44,7 +44,6 @@ def _get_journal_entries(file_url):
         "Transfer to Go Save account",
         "Transfer from Go Save account",
     ]
-    print("GETTING fileurl")
     response = requests.get(file_url)
     statement_pdf = BytesIO(response.content)
     
