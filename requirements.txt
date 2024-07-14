@@ -1,2 +1,3 @@
 requests
 pdfplumber
+python-dotenv

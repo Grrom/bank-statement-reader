@@ -1,7 +1,11 @@
 from io import BytesIO
+import json
 import os
+from dotenv import load_dotenv
 import requests
 import pdfplumber
+
+load_dotenv()
 
 class JournalEntry:
     def __init__(self, date, details, credit, debit, running_balance):
@@ -24,22 +28,23 @@ def process_bank_statement(request):
             Response object using
             `make_response <http://flask.pocoo.org/docs/1.0/api/#flask.Flask.make_response>`.
         """
-    request_json = request.get_json()
+    request_json = json.loads(request.data)
 
     file = request_json.get("file")
-    journal_entries = get_journal_entries(file)
+    journal_entries = _get_journal_entries(file)
     for entry in journal_entries:
         print(entry)
 
     return f'Hello World!'
 
 
-def get_journal_entries(file_url):
+def _get_journal_entries(file_url):
     entries_to_ignore = [
         "Inbound interbank transfer",
         "Transfer to Go Save account",
         "Transfer from Go Save account",
     ]
+    print("GETTING fileurl")
     response = requests.get(file_url)
     statement_pdf = BytesIO(response.content)
     
