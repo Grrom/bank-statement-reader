@@ -1,15 +1,24 @@
-FROM golang:1.22
+# Use an official Python runtime as the base image
+FROM python:3.8-slim
 
-# Install necessary tools
-RUN apt-get update && apt-get install -y git 
+# Install Git
+RUN apt-get update && apt-get install -y git
 
-# Set the working directory inside the container
-WORKDIR /workspace
+# Set the working directory in the container
+WORKDIR /app
 
-COPY ../ /workspace
 
-# Download Go modules (if go.mod and go.sum exist)
-RUN if [ -f "go.mod" ] && [ -f "go.sum" ]; then go mod download; fi
+# Copy the requirements file into the container
+COPY ../requirements.txt ../
 
-# Command to run when starting the container
-CMD ["go", "run", "cmd/main.go"]
+
+# Install the Python dependencies
+RUN pip3 install --no-cache-dir -r ../requirements.txt
+
+
+# Copy the rest of the application code into the container
+COPY ../ ../
+
+
+# Set the command to run the application
+CMD [ "python", "app.py" ]

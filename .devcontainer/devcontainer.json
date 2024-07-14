@@ -1,16 +1,7 @@
 {
-  "name": "Bank Statement reader ",
+  "name": "Bank statement reader",
   "build": {
     "dockerfile": "../docker/Dockerfile",
     "context": ".."
-  },
-  "customizations": {
-    "vscode": {
-      "extensions": ["golang.go"],
-      "settings": {
-        "terminal.integrated.shell.linux": "/bin/bash"
-      }
-    },
-    "extensions": ["golang.go"]
   }
 }
