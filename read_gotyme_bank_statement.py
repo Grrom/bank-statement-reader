@@ -141,7 +141,7 @@ def _get_journal_entries(file_url):
 def _save_to_notion(notion_page: NotionPage):
     publisher = pubsub_v1.PublisherClient()
     topic_name = 'projects/{project_id}/topics/{topic}'.format(
-        project_id=os.getenv('GOOGLE_CLOUD_PROJECT'),
+        project_id=os.getenv('PROJECT'),
         topic=os.getenv("CREATE_NOTION_PAGE_PUBSUB_TOPIC"),
     )
     future = publisher.publish(topic_name, notion_page.to_bytes_string())
@@ -159,7 +159,7 @@ def _alert_to_discord():
     }).encode("utf-8")
 
     topic_name = 'projects/{project_id}/topics/{topic}'.format(
-        project_id=os.getenv('GOOGLE_CLOUD_PROJECT'),
+        project_id=os.getenv('PROJECT'),
         topic=os.getenv("DISCORD_ALERT_PUBSUB_TOPIC"),
     )
     future = publisher.publish(topic_name, message)
