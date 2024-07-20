@@ -1,3 +1,4 @@
 requests
 pdfplumber
 python-dotenv
+google-cloud-pubsub

@@ -4,8 +4,28 @@ import os
 from dotenv import load_dotenv
 import requests
 import pdfplumber
+from google.cloud import pubsub_v1
 
 load_dotenv()
+
+class NotionPage: 
+    def __init__(self, organization, database_id, view_id, properties):
+        self.organization = organization
+        self.database_id = database_id
+        self.view_id = view_id
+        self.properties = properties
+    
+    def __str__(self):
+        return f"Organization: {self.organization}\nDatabase ID: {self.database_id}\nView ID: {self.view_id}\nProperties: {self.properties}\n"
+    
+    def to_bytes_string(self):
+        return json.dumps({
+            "organization": self.organization,
+            "database-id": self.database_id,
+            "view-id": self.view_id,
+            "properties": self.properties
+        }).encode("utf-8")
+    
 
 class JournalEntry:
     def __init__(self, date, details, credit, debit, running_balance):
@@ -14,6 +34,31 @@ class JournalEntry:
         self.credit = credit
         self.debit = debit
         self.running_balance = running_balance
+    
+
+    def to_notion_expense_page(self):
+        return NotionPage(
+            organization=os.getenv("NOTION_ORGANIZATION"),
+            database_id=os.getenv("NOTION_EXPENSES_DATABASE_ID"),
+            view_id=os.getenv("NOTION_EXPENSES_VIEW_ID"),
+            properties=self._get_notion_expenses_properties()
+        )
+    
+    def _get_notion_expenses_properties(self):
+        return [
+            {
+                "key": "Date Spent",
+                "value": self.date,
+            },
+            {
+                "key": "Name",
+                "value": self.details,
+            },
+            {
+                "key": "Amount",
+                "value": float(self.debit.replace(",", "")),
+            }
+        ]
 
     def __str__(self):
         return f"Date: {self.date}\nDetails: {self.details}\nCredit: {self.credit}\nDebit: {self.debit}\nRunning Balance: {self.running_balance}\n"
@@ -33,9 +78,9 @@ def process_bank_statement(request):
     file = request_json.get("file")
     journal_entries = _get_journal_entries(file)
     for entry in journal_entries:
-        print(entry)
+        _save_to_notion(entry.to_notion_expense_page())
 
-    return f'Hello World!'
+    return f'Donezo!'
 
 
 def _get_journal_entries(file_url):
@@ -82,3 +127,13 @@ def _get_journal_entries(file_url):
     
     
     return journal_entries 
+
+
+def _save_to_notion(notion_page: NotionPage):
+    publisher = pubsub_v1.PublisherClient()
+    topic_name = 'projects/{project_id}/topics/{topic}'.format(
+        project_id=os.getenv('GOOGLE_CLOUD_PROJECT'),
+        topic=os.getenv("CREATE_NOTION_PAGE_PUBSUB_TOPIC"),
+    )
+    future = publisher.publish(topic_name, notion_page.to_bytes_string())
+    future.result()
