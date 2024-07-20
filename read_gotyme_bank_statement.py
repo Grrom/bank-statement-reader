@@ -89,7 +89,7 @@ class JournalEntry:
             },
             {
                 "key": "Amount",
-                "value": float(self.debit.replace(",", "")),
+                "value": self.debit,
             }
         ]
 
