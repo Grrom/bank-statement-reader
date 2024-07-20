@@ -8,6 +8,39 @@ from google.cloud import pubsub_v1
 
 load_dotenv()
 
+NOTION_ORGANIZATION=os.getenv("NOTION_ORGANIZATION")
+NOTION_EXPENSES_DATABASE_ID=os.getenv("NOTION_EXPENSES_DATABASE_ID")
+NOTION_EXPENSES_VIEW_ID=os.getenv("NOTION_EXPENSES_VIEW_ID")
+
+ENTRIES_TO_IGNORE = [
+    "Inbound interbank transfer",
+    "Transfer to Go Save account",
+    "Transfer from Go Save account",
+]
+
+def process_bank_statement(request):
+    """Responds to any HTTP request.
+        Args:
+            request (flask.Request): HTTP request object.
+        Returns:
+            The response text or any set of values that can be turned into a
+            Response object using
+            `make_response <http://flask.pocoo.org/docs/1.0/api/#flask.Flask.make_response>`.
+        """
+    request_json = json.loads(request.data)
+
+    file = request_json.get("file")
+    journal_entries = _get_journal_entries(file)
+    try:
+        for entry in journal_entries:
+            _save_to_notion(entry.to_notion_expense_page())
+        _alert_to_discord()
+    except Exception as e:
+        return f'Error: {e}'
+
+    return f'Donezo!'
+
+
 class NotionPage: 
     def __init__(self, organization, database_id, view_id, properties):
         self.organization = organization
@@ -38,9 +71,9 @@ class JournalEntry:
 
     def to_notion_expense_page(self):
         return NotionPage(
-            organization=os.getenv("NOTION_ORGANIZATION"),
-            database_id=os.getenv("NOTION_EXPENSES_DATABASE_ID"),
-            view_id=os.getenv("NOTION_EXPENSES_VIEW_ID"),
+            organization=NOTION_ORGANIZATION,
+            database_id=NOTION_EXPENSES_DATABASE_ID,
+            view_id=NOTION_EXPENSES_VIEW_ID,
             properties=self._get_notion_expenses_properties()
         )
     
@@ -64,31 +97,7 @@ class JournalEntry:
         return f"Date: {self.date}\nDetails: {self.details}\nCredit: {self.credit}\nDebit: {self.debit}\nRunning Balance: {self.running_balance}\n"
 
 
-def process_bank_statement(request):
-    """Responds to any HTTP request.
-        Args:
-            request (flask.Request): HTTP request object.
-        Returns:
-            The response text or any set of values that can be turned into a
-            Response object using
-            `make_response <http://flask.pocoo.org/docs/1.0/api/#flask.Flask.make_response>`.
-        """
-    request_json = json.loads(request.data)
-
-    file = request_json.get("file")
-    journal_entries = _get_journal_entries(file)
-    for entry in journal_entries:
-        _save_to_notion(entry.to_notion_expense_page())
-
-    return f'Donezo!'
-
-
 def _get_journal_entries(file_url):
-    entries_to_ignore = [
-        "Inbound interbank transfer",
-        "Transfer to Go Save account",
-        "Transfer from Go Save account",
-    ]
     response = requests.get(file_url)
     statement_pdf = BytesIO(response.content)
     
@@ -108,7 +117,7 @@ def _get_journal_entries(file_url):
                 line_split = line.split()
                 details = " ".join(line_split[1:-3])
 
-                if details in entries_to_ignore:
+                if details in ENTRIES_TO_IGNORE:
                     continue
 
                 date = line_split[0]
@@ -136,4 +145,22 @@ def _save_to_notion(notion_page: NotionPage):
         topic=os.getenv("CREATE_NOTION_PAGE_PUBSUB_TOPIC"),
     )
     future = publisher.publish(topic_name, notion_page.to_bytes_string())
+    future.result()
+
+
+def _alert_to_discord():
+    link_to_notion = f"https://www.notion.so/{NOTION_ORGANIZATION}/{NOTION_EXPENSES_DATABASE_ID}?v={NOTION_EXPENSES_VIEW_ID}&pvs=4"
+
+    publisher = pubsub_v1.PublisherClient()
+    message = json.dumps({
+        "channel-name": os.environ.get("DISCORD_ALERTS_CHANNEL_NAME"),
+        "message": "Expenses have been sent to the notion page builder!",
+        "link": link_to_notion,
+    }).encode("utf-8")
+
+    topic_name = 'projects/{project_id}/topics/{topic}'.format(
+        project_id=os.getenv('GOOGLE_CLOUD_PROJECT'),
+        topic=os.getenv("DISCORD_ALERT_PUBSUB_TOPIC"),
+    )
+    future = publisher.publish(topic_name, message)
     future.result()
