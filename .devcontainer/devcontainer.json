@@ -1,7 +1,0 @@
-{
-  "name": "Bank statement reader",
-  "build": {
-    "dockerfile": "../docker/Dockerfile",
-    "context": ".."
-  }
-}

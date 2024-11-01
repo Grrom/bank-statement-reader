@@ -3,7 +3,7 @@ import os
 from urllib.request import Request
 
 from dotenv import load_dotenv
-from read_gotyme_bank_statement import process_bank_statement
+from main import process_bank_statement
 
 load_dotenv()
 
